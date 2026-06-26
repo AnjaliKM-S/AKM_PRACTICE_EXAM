@@ -3,7 +3,7 @@ import pandas as pd
 import joblib
 
 # 1. Load the trained model
-model = joblib.load("beer_prediction_model.pkl")
+model = joblib.load("models/beer_prediction_model.pkl")
 
 st.title("🍺 Beer Servings Prediction App")
 
