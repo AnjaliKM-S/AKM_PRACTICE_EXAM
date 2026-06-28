@@ -1,0 +1,231 @@
+Beer-Prediction-App/
+
+│ ├── app.py # Streamlit application
+
+├── requirements.txt # Python dependencies
+
+├── README.md # Project documentation
+
+├── .gitignore # Ignore unnecessary files
+
+│ ├── models/ │ └── beer_prediction_model.pkl
+
+│ ├── data/ │ └── beer-servings.csv
+
+│ ├── notebooks/ │ └── PRACTICE_EX.ipynb
+
+│ ├── src/ │ ├── train_model.py
+
+│ ├── preprocess.py
+
+│ └── predict.py
+
+Requirements.txt instalation
+
+[ ]
+
+[ ]
+
+[ ]
+To RUN STREAMLIT
+
+[ ]
+streamlit run app.py
+PUSHING TO GITHUB
+
+[ ]
+git init
+
+git add .
+
+git commit -m "Initial project commit"
+
+git remote add origin https://github.com/AnjaliKM-S/AKM_PRACTICE_EXAM.git
+
+git branch -M main
+git push -u origin main
+
+#Option 2: Replace everything on GitHub with your local project
+
+#If the GitHub repository is new and you don't need anything that's already in it, you can force push:
+git push -u origin main --force
+
+
+###Future updates
+
+##Whenever you change your project:
+
+git add .
+git commit -m "Describe your changes"
+git push
+
+[ ]
+
+
+[ ]
+
+
+[ ]
+import streamlit as st
+import pandas as pd
+import numpy as np
+import joblib
+
+# 1. Load the saved model and scaler
+model = joblib.load('models/random_forest_churn_model.pkl')
+scaler = joblib.load('models/scaler.pkl')
+
+# 2. App Title & Description
+st.title("📊 Telecom Customer Churn Predictor")
+st.markdown("Enter customer details below to predict the probability of churn.")
+
+# 3. Create Input Fields matching your feature engineering
+st.header("Customer Demographics & Services")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    gender = st.selectbox("Gender", ["Female", "Male"])
+    senior_citizen = st.selectbox("Senior Citizen", ["No", "Yes"])
+    partner = st.selectbox("Has Partner?", ["No", "Yes"])
+    dependents = st.selectbox("Has Dependents?", ["No", "Yes"])
+    tenure = st.slider("Tenure (Months)", min_value=0, max_value=72, value=12)
+
+with col2:
+    phone_service = st.selectbox("Phone Service", ["No", "Yes"])
+    multiple_lines = st.selectbox("Multiple Lines", ["No", "No phone service", "Yes"])
+    internet_service = st.selectbox("Internet Service", ["No", "DSL", "Fiber optic"])
+    contract = st.selectbox("Contract Type", ["Month-to-month", "One year", "Two year"])
+    paperless_billing = st.selectbox("Paperless Billing", ["No", "Yes"])
+
+st.header("Financial Details")
+monthly_charges = st.number_input("Monthly Charges ($)", min_value=18.0, max_value=120.0, value=65.0)
+
+# 4. Feature Engineering (Match your notebook's exact preprocessing logic)
+clv = monthly_charges * tenure
+total_charges = monthly_charges * tenure
+
+# 5. Process Inputs into Dataframe
+if st.button("Predict Churn"):
+    
+    # Initialize a dictionary with ALL model features set to 0
+    # Note: Added the missing columns required by your fit data
+    encoded_data = {
+        'gender': [1 if gender == "Male" else 0],
+        'SeniorCitizen': [1 if senior_citizen == "Yes" else 0],
+        'Partner': [1 if partner == "Yes" else 0],
+        'Dependents': [1 if dependents == "Yes" else 0],
+        'tenure': [tenure],
+        'PhoneService': [1 if phone_service == "Yes" else 0],
+        'PaperlessBilling': [1 if paperless_billing == "Yes" else 0],
+        'MonthlyCharges': [monthly_charges],
+        'TotalCharges': [total_charges],
+        'Customer Life time Value': [clv],
+        
+        # One-hot encoded placeholders
+        'MultipleLines_No phone service': [0],
+        'MultipleLines_Yes': [0],
+        'InternetService_Fiber optic': [0],
+        'InternetService_No': [0],
+        'Contract_One year': [0],
+        'Contract_Two year': [0],
+        
+        # FIXED: Added missing features flagged by your scikit-learn error
+        'OnlineBackup_Yes': [0],
+        'OnlineSecurity_Yes': [0],
+        'DeviceProtection_Yes': [0],
+        'PaymentMethod_Credit card (automatic)': [0],
+        'PaymentMethod_Electronic check': [0],
+        'PaymentMethod_Mailed check': [0]
+    }
+    
+    # Create the DataFrame
+    input_data = pd.DataFrame(encoded_data)
+    
+    # Dynamically toggle the 1s based on user selections
+    if multiple_lines == "No phone service":
+        input_data['MultipleLines_No phone service'] = 1
+    elif multiple_lines == "Yes":
+        input_data['MultipleLines_Yes'] = 1
+        
+    if internet_service == "Fiber optic":
+        input_data['InternetService_Fiber optic'] = 1
+    elif internet_service == "No":
+        input_data['InternetService_No'] = 1
+        
+    if contract == "One year":
+        input_data['Contract_One year'] = 1
+    elif contract == "Two year":
+        input_data['Contract_Two year'] = 1
+
+    # ⚠️ REINDEX GUARD: Enforces the exact column sequence the model trained on.
+    # This acts as a final safety net against any alignment mismatch.
+    feature_names = model.feature_names_in_
+    input_data = input_data.reindex(columns=feature_names, fill_value=0)
+    
+    # 6. Scale the numerical variables using the loaded scaler
+    cols_to_scale = ['tenure', 'MonthlyCharges', 'TotalCharges']
+    input_data[cols_to_scale] = scaler.transform(input_data[cols_to_scale])
+    
+    # 7. Make Prediction
+    prediction = model.predict(input_data)
+    prediction_proba = model.predict_proba(input_data)[0][1]
+    
+    # 8. Display Results
+    st.subheader("Prediction Result:")
+    if prediction[0] == 1:
+        st.error(f"⚠️ High Risk of Churn! (Probability: {prediction_proba:.2%})")
+    else:
+        st.success(f"✅ Low Risk. Customer likely to stay. (Probability: {prediction_proba:.2%})")
+
+
+
+[ ]
+import streamlit as st
+import pandas as pd
+import joblib
+
+# 1. Load the trained model
+model = joblib.load("models/beer_prediction_model.pkl")
+
+st.title("🍺 Beer Servings Prediction App")
+
+# 2. Get User Input
+country = st.text_input("Country", "United States")
+beer = st.number_input("Beer Servings", min_value=0, max_value=500, value=100)
+spirit = st.number_input("Spirit Servings", min_value=0, max_value=500, value=50)
+wine = st.number_input("Wine Servings", min_value=0, max_value=500, value=50)
+
+continent = st.selectbox(
+    "Continent",
+    ["Africa", "Asia", "Europe", "North America", "Oceania", "South America"]
+)
+
+# 3. Handle One-Hot Encoding matching your model training
+# Initialize all continent columns as False
+continent_data = {
+    'continent_Asia': False,
+    'continent_Europe': False,
+    'continent_North America': False,
+    'continent_Oceania': False,
+    'continent_South America': False
+}
+
+# Set the selected continent column to True (except Africa, which was dropped as first)
+if f"continent_{continent}" in continent_data:
+    continent_data[f"continent_{continent}"] = True
+
+# 4. Create DataFrame for Prediction
+input_data = pd.DataFrame([{
+    "beer_servings": beer,
+    "spirit_servings": spirit,
+    "wine_servings": wine,
+    **continent_data
+}])
+
+# 5. Predict Button
+if st.button("Predict"):
+    prediction = model.predict(input_data)
+    st.success(
+        f"Predicted Total Litres of Pure Alcohol: {prediction[0]:.2f}"
+    )
